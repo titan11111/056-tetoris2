@@ -1,641 +1,998 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>テトリス登りゲーム</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+/* 基本設定 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    /* iOS タップズーム完全防止 */
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+}
 
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 10px;
-        }
+body {
+    font-family: 'Courier New', monospace;
+    background: #0a0a0a;
+    color: #ffffff;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    /* iOS Safari 専用設定 */
+    -webkit-text-size-adjust: none;
+    -webkit-overflow-scrolling: touch;
+}
 
-        .game-container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            padding: 20px;
-            max-width: 500px;
-            width: 100%;
-        }
+/* 画面の基本設定 */
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: none;
+    background: #1a1a1a;
+}
 
-        .game-header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+.screen.active {
+    display: flex;
+    flex-direction: column;
+    animation: fadeIn 0.5s ease;
+}
 
-        .game-header h1 {
-            color: #333;
-            font-size: 24px;
-            margin-bottom: 15px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-        }
+/* タイトル画面 */
+#titleScreen {
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+}
 
-        .score-info {
-            display: flex;
-            justify-content: space-between;
-            background: #f8f9fa;
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-weight: bold;
-            color: #495057;
-        }
+.title-container {
+    text-align: center;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 40px;
+    border-radius: 20px;
+    border: 3px solid #ffffff;
+    box-shadow: 0 0 30px rgba(52, 152, 219, 0.5);
+    max-width: 90vw;
+}
 
-        .game-area {
-            position: relative;
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
+.title-container h1 {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    color: #3498db;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
 
-        #gameCanvas {
-            border: 3px solid #495057;
-            border-radius: 10px;
-            background: linear-gradient(180deg, #87CEEB 0%, #98FB98 100%);
-            width: 95%;
-            height: 600px;
-        }
+.title-container h2 {
+    font-size: 1.5rem;
+    margin-bottom: 30px;
+    color: #e74c3c;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
 
-        .game-over,
-        .game-clear {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 30px;
-            border-radius: 15px;
-            text-align: center;
-            display: none;
-            z-index: 10;
-        }
+.start-button {
+    background: #27ae60;
+    color: white;
+    padding: 15px 30px;
+    font-size: 1.5rem;
+    border: 3px solid #ffffff;
+    border-radius: 10px;
+    cursor: pointer;
+    margin: 20px auto;
+    width: fit-content;
+    transition: all 0.3s ease;
+    font-weight: bold;
+    animation: pulse 2s infinite;
+}
 
-        .game-clear {
-            background: rgba(40, 167, 69, 0.95);
-        }
+.start-button:hover {
+    background: #2ecc71;
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(46, 204, 113, 0.6);
+}
 
-        .game-over h2,
-        .game-clear h2 {
-            font-size: 24px;
-            margin-bottom: 15px;
-        }
+.instructions {
+    margin-top: 30px;
+    color: #bdc3c7;
+    text-align: left;
+}
 
-        .restart-btn {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 15px 25px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 15px;
-            transition: background 0.3s ease;
-        }
+.instructions p {
+    margin: 8px 0;
+    font-size: 1rem;
+}
 
-        .restart-btn:hover {
-            background: #0056b3;
-        }
+/* ゲーム画面 */
+#gameScreen {
+    flex-direction: column;
+}
 
-        .controls {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
+/* ヘッダー */
+#header {
+    background: #2c3e50;
+    padding: 10px;
+    border-bottom: 2px solid #34495e;
+    flex-shrink: 0;
+}
 
-        .control-row {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-        }
+.status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 800px;
+    margin: 0 auto;
+    flex-wrap: wrap;
+    gap: 10px;
+}
 
-        .control-btn {
-            flex: 1;
-            max-width: 120px;
-            padding: 15px;
-            background: #28a745;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
+.player-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
 
-        .control-btn:hover {
-            background: #218838;
-            transform: translateY(-2px);
-        }
+.player-info > span {
+    font-weight: bold;
+    color: #3498db;
+    font-size: 1.1rem;
+}
 
-        .control-btn:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
+.hp-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 
-        .jump-btn {
-            flex: 1;
-            max-width: 200px;
-            padding: 20px;
-            background: #ff6b35;
-            color: white;
-            border: none;
-            border-radius: 15px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
-        }
+.hp-bar {
+    width: 100px;
+    height: 15px;
+    background: #7f8c8d;
+    border: 2px solid #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+}
 
-        .jump-btn:hover {
-            background: #e55a2b;
-            transform: translateY(-3px);
-        }
+.hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #27ae60 0%, #2ecc71 100%);
+    transition: width 0.5s ease;
+    width: 100%;
+}
 
-        .jump-btn:active {
-            transform: translateY(0);
-            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
-        }
+.floor-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
 
-        .instructions {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-        }
+.floor-info span {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.2);
+    padding: 5px 15px;
+    border-radius: 15px;
+    border: 2px solid #e74c3c;
+}
 
-        .instructions h3 {
-            color: #495057;
-            margin-bottom: 10px;
-            font-size: 18px;
-        }
+.money-display {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #f39c12;
+    background: rgba(243, 156, 18, 0.2);
+    padding: 5px 15px;
+    border-radius: 15px;
+    border: 2px solid #f39c12;
+}
 
-        .instructions p {
-            color: #6c757d;
-            font-size: 14px;
-            margin-bottom: 5px;
-        }
+.sound-toggle {
+    font-size: 0.9rem;
+    color: #bdc3c7;
+    background: rgba(189, 195, 199, 0.2);
+    padding: 5px 10px;
+    border-radius: 10px;
+    border: 1px solid #bdc3c7;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
 
-        /* スマホ対応 */
-        @media (max-width: 480px) {
-            .game-container {
-                padding: 15px;
-            }
-            
-            .game-header h1 {
-                font-size: 20px;
-            }
-            
-            .score-info {
-                font-size: 14px;
-                padding: 8px 15px;
-            }
-            
-            #gameCanvas {
-                height: 500px;
-            }
-            
-            .control-btn {
-                padding: 12px;
-                font-size: 14px;
-            }
-            
-            .jump-btn {
-                padding: 18px;
-                font-size: 16px;
-            }
-            
-            .instructions p {
-                font-size: 12px;
-            }
-        }
+.sound-toggle:hover {
+    background: rgba(189, 195, 199, 0.4);
+    transform: scale(1.05);
+}
 
-        /* より小さなスマホ対応 */
-        @media (max-width: 360px) {
-            #gameCanvas {
-                height: 450px;
-            }
-            
-            .control-btn {
-                padding: 10px;
-                font-size: 13px;
-            }
-            
-            .jump-btn {
-                padding: 15px;
-                font-size: 15px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="game-container">
-        <div class="game-header">
-            <h1>🧱 ブロック登りゲーム 🏃‍♂️</h1>
-            <div class="score-info">
-                <div>高さ: <span id="height">0m</span></div>
-                <div>ブロック: <span id="blocks">0</span></div>
-                <div>時間: <span id="timer">0s</span></div>
-            </div>
-        </div>
-        
-        <div class="game-area">
-            <canvas id="gameCanvas"></canvas>
-            <div class="game-over" id="gameOver">
-                <h2>ゲームオーバー!</h2>
-                <p>到達高度: <span id="finalHeight">0m</span></p>
-                <button class="restart-btn" onclick="startGame()">もう一度</button>
-            </div>
-            <div class="game-clear" id="gameClear">
-                <h2>ゴール到達!</h2>
-                <p>おめでとうございます！</p>
-                <p>到達時間: <span id="clearTime">0s</span></p>
-                <button class="restart-btn" onclick="startGame()">もう一度</button>
-            </div>
-        </div>
-        
-        <div class="controls">
-            <div class="control-row">
-                <button class="control-btn" onclick="moveLeft()">← 左</button>
-                <button class="control-btn" onclick="moveRight()">右 →</button>
-            </div>
-            <div class="control-row">
-                <button class="jump-btn" onclick="jump()">🆙 ジャンプ</button>
-            </div>
-        </div>
-        
-        <div class="instructions">
-            <h3>遊び方</h3>
-            <p>🧱 落ちてくるブロックを積み上げて階段を作ろう</p>
-            <p>🏃‍♂️ プレイヤーを動かしてブロックの上を登ろう</p>
-            <p>🎯 目標：頂上（500m）に到達せよ！</p>
-            <p>⚠️ ブロックに潰されないよう注意</p>
-        </div>
-    </div>
+/* ゲームエリア */
+#gameArea {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background: #34495e;
+    min-height: 0;
+}
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+#mapContainer {
+    width: 100%;
+    max-width: 600px;
+    aspect-ratio: 4/3;
+    background: #2c3e50;
+    border: 3px solid #ffffff;
+    border-radius: 10px;
+    overflow: hidden;
+}
 
-        // キャンバスサイズを設定
-        function resizeCanvas() {
-            const container = canvas.parentElement;
-            canvas.width = container.clientWidth * 0.95;
-            canvas.height = 600;
-        }
-        
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+#gameMap {
+    width: 100%;
+    height: 100%;
+    background: #1a1a1a;
+}
 
-        // ゲーム変数
-        let gameState = 'playing';
-        let score = 0;
-        let gameTime = 0;
-        let cameraY = 0;
-        let goalHeight = 500;
+/* コントローラー */
+#controller {
+    background: #2c3e50;
+    padding: 20px;
+    border-top: 2px solid #34495e;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+    position: relative;
+    flex-shrink: 0;
+}
 
-        // プレイヤー
-        let player = {
-            x: canvas.width / 2 - 15,
-            y: canvas.height - 60,
-            width: 30,
-            height: 30,
-            velocityY: 0,
-            onGround: false,
-            color: '#ff4757'
-        };
+.dpad {
+    position: relative;
+    width: 120px;
+    height: 120px;
+}
 
-        // ブロック配列
-        let blocks = [];
-        let fallingBlocks = [];
+.dpad-btn {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background: #34495e;
+    border: 2px solid #ffffff;
+    color: #ffffff;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 5px;
+}
 
-        // ブロックの種類
-        const blockTypes = [
-            { width: 60, height: 20, color: '#3742fa' },   // 青い長方形
-            { width: 40, height: 40, color: '#2ed573' },   // 緑の正方形
-            { width: 80, height: 15, color: '#ffa502' },   // オレンジの長い板
-            { width: 50, height: 30, color: '#ff6348' },   // 赤い中サイズ
-            { width: 35, height: 35, color: '#a4b0be' }    // グレーの正方形
-        ];
+.dpad-btn:active {
+    background: #3498db;
+    transform: scale(0.95);
+}
 
-        // 初期ブロック（地面）
-        function initializeGround() {
-            blocks = [];
-            // 地面のブロック
-            for (let i = 0; i < canvas.width; i += 40) {
-                blocks.push({
-                    x: i,
-                    y: canvas.height - 20,
-                    width: 40,
-                    height: 20,
-                    color: '#2c2c54',
-                    isGround: true
-                });
-            }
-        }
+.dpad-btn.up {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
 
-        // ブロック生成
-        function createFallingBlock() {
-            if (Math.random() < 0.02) { // 2%の確率で生成
-                const type = blockTypes[Math.floor(Math.random() * blockTypes.length)];
-                fallingBlocks.push({
-                    x: Math.random() * (canvas.width - type.width),
-                    y: -type.height,
-                    width: type.width,
-                    height: type.height,
-                    color: type.color,
-                    velocityY: 2 + Math.random() * 3
-                });
-            }
-        }
+.dpad-btn.down {
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
 
-        // 衝突判定
-        function checkCollision(rect1, rect2) {
-            return rect1.x < rect2.x + rect2.width &&
-                   rect1.x + rect1.width > rect2.x &&
-                   rect1.y < rect2.y + rect2.height &&
-                   rect1.y + rect1.height > rect2.y;
-        }
+.dpad-btn.left {
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
 
-        // プレイヤーの移動
-        function updatePlayer() {
-            // 重力
-            if (!player.onGround) {
-                player.velocityY += 0.8;
-            }
+.dpad-btn.right {
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
 
-            player.y += player.velocityY;
-            player.onGround = false;
+.action-buttons {
+    display: flex;
+    gap: 20px;
+    position: relative;
+}
 
-            // ブロックとの衝突判定
-            for (let block of blocks) {
-                if (checkCollision(player, block)) {
-                    // 上から落ちてきた場合
-                    if (player.velocityY > 0 && player.y < block.y) {
-                        player.y = block.y - player.height;
-                        player.velocityY = 0;
-                        player.onGround = true;
-                    }
-                    // 下から当たった場合
-                    else if (player.velocityY < 0 && player.y > block.y) {
-                        player.y = block.y + block.height;
-                        player.velocityY = 0;
-                    }
-                }
-            }
+.action-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3px solid #ffffff;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
 
-            // 画面下限
-            if (player.y > canvas.height) {
-                gameState = 'gameOver';
-            }
+.a-btn {
+    background: #27ae60;
+    color: #ffffff;
+}
 
-            // 左右の境界
-            if (player.x < 0) player.x = 0;
-            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+.a-btn:active {
+    background: #2ecc71;
+    transform: scale(0.95);
+}
 
-            // カメラの追従（プレイヤーが高く登ったとき）
-            const targetCameraY = Math.max(0, canvas.height - player.y - 300);
-            if (targetCameraY > cameraY) {
-                cameraY = targetCameraY;
-            }
+.b-btn {
+    background: #e74c3c;
+    color: #ffffff;
+    margin-right: 30px;
+}
 
-            // 高度計算
-            const height = Math.max(0, Math.floor((canvas.height - player.y - 40) / 10));
-            score = Math.max(score, height);
+.b-btn:active {
+    background: #c0392b;
+    transform: scale(0.95);
+}
 
-            // ゴール判定
-            if (score >= goalHeight) {
-                gameState = 'clear';
-            }
-        }
+.menu-buttons {
+    position: absolute;
+    bottom: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+}
 
-        // 落下ブロックの更新
-        function updateFallingBlocks() {
-            for (let i = fallingBlocks.length - 1; i >= 0; i--) {
-                const block = fallingBlocks[i];
-                block.y += block.velocityY;
+.menu-btn {
+    background: #7f8c8d;
+    color: #ffffff;
+    border: 2px solid #ffffff;
+    padding: 8px 15px;
+    border-radius: 15px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 80px;
+}
 
-                // 既存のブロックまたは地面との衝突判定
-                let landed = false;
-                for (let staticBlock of blocks) {
-                    if (checkCollision(block, staticBlock) && block.velocityY > 0) {
-                        block.y = staticBlock.y - block.height;
-                        block.velocityY = 0;
-                        landed = true;
-                        break;
-                    }
-                }
+.menu-btn:active {
+    background: #95a5a6;
+    transform: scale(0.95);
+}
 
-                // 地面に到達
-                if (block.y + block.height >= canvas.height - 20) {
-                    block.y = canvas.height - 20 - block.height;
-                    landed = true;
-                }
+/* オーバーレイ */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.9);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+}
 
-                // ブロックが着地したら静的ブロックに変換
-                if (landed) {
-                    blocks.push({
-                        x: block.x,
-                        y: block.y,
-                        width: block.width,
-                        height: block.height,
-                        color: block.color
-                    });
-                    fallingBlocks.splice(i, 1);
-                }
+.overlay.active {
+    display: flex;
+}
 
-                // プレイヤーとの衝突判定（落下中のブロック）
-                if (checkCollision(block, player) && block.velocityY > 0) {
-                    gameState = 'gameOver';
-                }
+/* 戦闘画面 */
+.battle-container {
+    background: #2c3e50;
+    border: 3px solid #ffffff;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 90vw;
+    width: 600px;
+    text-align: center;
+    animation: slideUp 0.5s ease;
+}
 
-                // 画面外に出たブロックを削除
-                if (block.y > canvas.height + 100) {
-                    fallingBlocks.splice(i, 1);
-                }
-            }
-        }
+.battle-header h3 {
+    color: #e74c3c;
+    font-size: 2rem;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
 
-        // 描画
-        function draw() {
-            // 背景をクリア
-            ctx.fillStyle = 'rgba(135, 206, 235, 0.3)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+.battle-area {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin: 30px 0;
+    gap: 20px;
+}
 
-            ctx.save();
-            ctx.translate(0, -cameraY);
+.character-sprite {
+    width: 80px;
+    height: 80px;
+    border-radius: 10px;
+    border: 3px solid #ffffff;
+    margin-bottom: 10px;
+}
 
-            // 静的ブロックを描画
-            blocks.forEach(block => {
-                ctx.fillStyle = block.color;
-                ctx.fillRect(block.x, block.y, block.width, block.height);
-                
-                // ブロックの境界線
-                ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(block.x, block.y, block.width, block.height);
-            });
+.player-sprite {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+}
 
-            // 落下中のブロックを描画
-            fallingBlocks.forEach(block => {
-                ctx.fillStyle = block.color;
-                ctx.fillRect(block.x, block.y, block.width, block.height);
-                
-                // 落下中のブロックにエフェクト
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(block.x, block.y, block.width, block.height);
-            });
+.enemy-sprite {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
 
-            // プレイヤーを描画
-            ctx.fillStyle = player.color;
-            ctx.fillRect(player.x, player.y, player.width, player.height);
-            
-            // プレイヤーの目
-            ctx.fillStyle = 'white';
-            ctx.fillRect(player.x + 8, player.y + 8, 6, 6);
-            ctx.fillRect(player.x + 16, player.y + 8, 6, 6);
-            ctx.fillStyle = 'black';
-            ctx.fillRect(player.x + 10, player.y + 10, 2, 2);
-            ctx.fillRect(player.x + 18, player.y + 10, 2, 2);
+.character-info {
+    text-align: center;
+}
 
-            ctx.restore();
+.character-info .name {
+    font-weight: bold;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+}
 
-            // ゴールライン（画面上部に固定表示）
-            const goalY = canvas.height - (goalHeight * 10) - 40;
-            if (goalY + cameraY > -50 && goalY + cameraY < canvas.height + 50) {
-                ctx.save();
-                ctx.translate(0, -cameraY);
-                ctx.strokeStyle = '#ff1744';
-                ctx.lineWidth = 3;
-                ctx.setLineDash([10, 5]);
-                ctx.beginPath();
-                ctx.moveTo(0, goalY);
-                ctx.lineTo(canvas.width, goalY);
-                ctx.stroke();
-                ctx.setLineDash([]);
-                
-                ctx.fillStyle = '#ff1744';
-                ctx.font = 'bold 16px Arial';
-                ctx.fillText('🏁 GOAL (500m)', 10, goalY - 10);
-                ctx.restore();
-            }
-        }
+.vs-text {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #f39c12;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
 
-        // UI更新
-        function updateUI() {
-            document.getElementById('height').textContent = score + 'm';
-            document.getElementById('blocks').textContent = blocks.length - Math.floor(canvas.width / 40); // 地面ブロックを除く
-            document.getElementById('timer').textContent = Math.floor(gameTime / 60) + 's';
-        }
+.battle-log {
+    background: #34495e;
+    border: 2px solid #7f8c8d;
+    border-radius: 10px;
+    padding: 15px;
+    height: 100px;
+    overflow-y: auto;
+    margin: 20px 0;
+    text-align: left;
+}
 
-        // ゲームループ
-        function gameLoop() {
-            if (gameState === 'playing') {
-                createFallingBlock();
-                updatePlayer();
-                updateFallingBlocks();
-                gameTime++;
-                
-                draw();
-                updateUI();
-                
-                requestAnimationFrame(gameLoop);
-            } else if (gameState === 'gameOver') {
-                document.getElementById('finalHeight').textContent = score + 'm';
-                document.getElementById('gameOver').style.display = 'block';
-            } else if (gameState === 'clear') {
-                document.getElementById('clearTime').textContent = Math.floor(gameTime / 60) + 's';
-                document.getElementById('gameClear').style.display = 'block';
-            }
-        }
+.battle-log p {
+    margin: 5px 0;
+    line-height: 1.4;
+}
 
-        // コントロール関数
-        function moveLeft() {
-            if (gameState === 'playing') {
-                player.x -= 15;
-            }
-        }
+.battle-controls {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 20px;
+}
 
-        function moveRight() {
-            if (gameState === 'playing') {
-                player.x += 15;
-            }
-        }
+.battle-btn {
+    padding: 12px 25px;
+    border: 2px solid #ffffff;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
 
-        function jump() {
-            if (gameState === 'playing' && player.onGround) {
-                player.velocityY = -15;
-                player.onGround = false;
-            }
-        }
+.attack-btn {
+    background: #27ae60;
+    color: #ffffff;
+}
 
-        // キーボード操作
-        document.addEventListener('keydown', (e) => {
-            switch(e.key) {
-                case 'ArrowLeft':
-                case 'a':
-                case 'A':
-                    moveLeft();
-                    break;
-                case 'ArrowRight':
-                case 'd':
-                case 'D':
-                    moveRight();
-                    break;
-                case ' ':
-                case 'ArrowUp':
-                case 'w':
-                case 'W':
-                    e.preventDefault();
-                    jump();
-                    break;
-            }
-        });
+.attack-btn:hover {
+    background: #2ecc71;
+    transform: scale(1.05);
+}
 
-        // ゲーム開始
-        function startGame() {
-            gameState = 'playing';
-            score = 0;
-            gameTime = 0;
-            cameraY = 0;
-            
-            // プレイヤーリセット
-            player.x = canvas.width / 2 - 15;
-            player.y = canvas.height - 60;
-            player.velocityY = 0;
-            player.onGround = false;
-            
-            // ブロックリセット
-            fallingBlocks = [];
-            initializeGround();
-            
-            // UI非表示
-            document.getElementById('gameOver').style.display = 'none';
-            document.getElementById('gameClear').style.display = 'none';
-            
-            // ゲームループ開始
-            gameLoop();
-        }
+.special-btn {
+    background: #8e44ad;
+    color: #ffffff;
+}
 
-        // ゲーム開始
-        initializeGround();
-        startGame();
-    </script>
-</body>
-</html>
+.special-btn:hover {
+    background: #9b59b6;
+    transform: scale(1.05);
+}
+
+/* ショップ画面 */
+.shop-container {
+    background: #2c3e50;
+    border: 3px solid #ffffff;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 90vw;
+    width: 600px;
+    text-align: center;
+    animation: slideUp 0.5s ease;
+}
+
+.shop-header h3 {
+    color: #f39c12;
+    font-size: 2rem;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.shop-items {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin: 20px 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.shop-item {
+    background: #34495e;
+    border: 2px solid #7f8c8d;
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.item-info {
+    text-align: left;
+    flex: 1;
+}
+
+.item-name {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #3498db;
+}
+
+.item-description {
+    font-size: 0.9rem;
+    color: #bdc3c7;
+    margin-top: 5px;
+}
+
+.item-price {
+    font-weight: bold;
+    color: #f39c12;
+    margin-right: 15px;
+}
+
+.buy-btn {
+    background: #27ae60;
+    color: #ffffff;
+    border: 2px solid #ffffff;
+    padding: 8px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 80px;
+}
+
+.buy-btn:hover {
+    background: #2ecc71;
+    transform: scale(1.05);
+}
+
+.buy-btn:disabled {
+    background: #7f8c8d;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.close-shop-btn {
+    background: #e74c3c;
+    color: #ffffff;
+    border: 2px solid #ffffff;
+    padding: 12px 25px;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+}
+
+.close-shop-btn:hover {
+    background: #c0392b;
+    transform: scale(1.05);
+}
+
+/* ヘルプ画面 */
+.help-container {
+    background: #2c3e50;
+    border: 3px solid #ffffff;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 90vw;
+    width: 500px;
+    text-align: center;
+    animation: slideUp 0.5s ease;
+}
+
+.help-header h3 {
+    color: #3498db;
+    font-size: 2rem;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.help-content {
+    text-align: left;
+    margin: 20px 0;
+}
+
+.help-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #34495e;
+    border-radius: 10px;
+}
+
+.help-section h4 {
+    color: #f39c12;
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+}
+
+.help-section p {
+    color: #bdc3c7;
+    margin: 5px 0;
+    line-height: 1.4;
+}
+
+.close-help-btn {
+    background: #3498db;
+    color: #ffffff;
+    border: 2px solid #ffffff;
+    padding: 12px 25px;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+}
+
+.close-help-btn:hover {
+    background: #2980b9;
+    transform: scale(1.05);
+}
+
+/* エレベーター演出 */
+.elevator-container {
+    text-align: center;
+    color: #ffffff;
+}
+
+.elevator-animation {
+    width: 200px;
+    height: 150px;
+    position: relative;
+    margin: 0 auto 30px;
+    background: #34495e;
+    border: 3px solid #ffffff;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.elevator-door {
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: 100%;
+    background: #7f8c8d;
+    border: 1px solid #95a5a6;
+    transition: transform 2s ease;
+}
+
+.elevator-door.left {
+    left: 0;
+}
+
+.elevator-door.right {
+    right: 0;
+}
+
+.elevator-door.open.left {
+    transform: translateX(-100%);
+}
+
+.elevator-door.open.right {
+    transform: translateX(100%);
+}
+
+.elevator-text {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #f39c12;
+}
+
+/* ゲームオーバー・クリア画面 */
+.game-over-container,
+.game-clear-container {
+    text-align: center;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 50px;
+    border-radius: 20px;
+    border: 3px solid #ffffff;
+    max-width: 90vw;
+}
+
+.game-over-container h1 {
+    color: #e74c3c;
+    font-size: 3rem;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.game-clear-container h1 {
+    color: #27ae60;
+    font-size: 3rem;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.game-over-container p,
+.game-clear-container p {
+    font-size: 1.2rem;
+    margin: 15px 0;
+    color: #bdc3c7;
+}
+
+.game-over-container button,
+.game-clear-container button {
+    background: #3498db;
+    color: #ffffff;
+    border: 2px solid #ffffff;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    border-radius: 10px;
+    cursor: pointer;
+    margin: 20px auto;
+    width: fit-content;
+    transition: all 0.3s ease;
+    font-weight: bold;
+}
+
+.game-over-container button:hover,
+.game-clear-container button:hover {
+    background: #2980b9;
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(52, 152, 219, 0.6);
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .title-container {
+        padding: 30px 20px;
+        margin: 20px;
+    }
+    
+    .title-container h1 {
+        font-size: 2.5rem;
+    }
+    
+    .title-container h2 {
+        font-size: 1.2rem;
+    }
+    
+    .status-bar {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .player-info {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    #controller {
+        padding: 15px 15px 80px 15px;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: space-between;
+    }
+    
+    .dpad {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .dpad-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 1rem;
+    }
+    
+    .action-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+    
+    .menu-buttons {
+        bottom: -50px;
+        gap: 15px;
+    }
+    
+    .menu-btn {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        min-width: 70px;
+    }
+    
+    .battle-container,
+    .shop-container,
+    .help-container {
+        padding: 20px;
+        margin: 20px;
+    }
+    
+    .battle-area {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .battle-controls {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .vs-text {
+        font-size: 1.5rem;
+    }
+    
+    .shop-item {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .title-container h1 {
+        font-size: 2rem;
+    }
+    
+    .start-button {
+        font-size: 1.2rem;
+        padding: 12px 25px;
+    }
+    
+    #gameArea {
+        padding: 10px;
+    }
+    
+    .hp-bar {
+        width: 80px;
+        height: 12px;
+    }
+    
+    #controller {
+        padding: 10px 10px 70px 10px;
+        gap: 15px;
+    }
+    
+    .dpad {
+        width: 90px;
+        height: 90px;
+    }
+    
+    .dpad-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 0.9rem;
+    }
+    
+    .action-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 1.1rem;
+    }
+    
+    .menu-buttons {
+        bottom: -45px;
+        gap: 10px;
+    }
+    
+    .menu-btn {
+        padding: 5px 10px;
+        font-size: 0.7rem;
+        min-width: 60px;
+    }
+    
+    .battle-header h3,
+    .shop-header h3,
+    .help-header h3 {
+        font-size: 1.5rem;
+    }
+    
+    .character-sprite {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .battle-btn,
+    .buy-btn,
+    .close-shop-btn,
+    .close-help-btn {
+        padding: 10px 20px;
+        font-size: 1rem;
+    }
+    
+    .game-over-container,
+    .game-clear-container {
+        padding: 30px 20px;
+        margin: 20px;
+    }
+    
+    .game-over-container h1,
+    .game-clear-container h1 {
+        font-size: 2rem;
+    }
+}
+
+/* アニメーション */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { transform: translateY(50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* アクセシビリティ改善 */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ダークモード対応 */
+@media (prefers-color-scheme: dark) {
+    body {
+        background: #0a0a0a;
+    }
+}
+
+/* フォーカス対応 */
+button:focus,
+.dpad-btn:focus,
+.action-btn:focus {
+    outline: 2px solid #3498db;
+    outline-offset: 2px;
+}
+
+/* iOS Safari 専用追加設定 */
+input, textarea, select {
+    -webkit-appearance: none;
+    -webkit-border-radius: 0;
+    border-radius: 0;
+}
+
+/* すべてのボタン要素にiOS対応を適用 */
+button,
+.start-button,
+.dpad-btn,
+.action-btn,
+.menu-btn,
+.battle-btn,
+.buy-btn,
+.close-shop-btn,
+.close-help-btn,
+.sound-toggle {
+    /* iOS完全タップズーム防止 */
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: none;
+    /* iOS ダブルタップ防止 */
+    -webkit-user-select: none;
+    user-select: none;
+}
